@@ -1,0 +1,263 @@
+import React, { useState, useEffect } from 'react';
+import { X, Loader2 } from 'lucide-react';
+import { incomeService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { CURRENCY_SYMBOLS } from '../utils/formatters';
+
+const INCOME_CATEGORIES = [
+  'Salary',
+  'Freelance',
+  'Investments',
+  'Business',
+  'Part-time',
+  'Allowance',
+  'Gifts',
+  'Other',
+];
+
+const INCOME_PAYMENT_METHODS = [
+  'Bank Transfer',
+  'UPI / Net Banking',
+  'Cash',
+  'Cheque',
+  'Other',
+];
+
+const IncomeModal = ({ isOpen, onClose, onSuccess, initialData = null }) => {
+  const { currency } = useAuth();
+  const [formData, setFormData] = useState({
+    title: '',
+    amount: '',
+    category: 'Salary',
+    date: new Date().toISOString().split('T')[0],
+    paymentMethod: 'Bank Transfer',
+    description: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        title: initialData.title || '',
+        amount: initialData.amount || '',
+        category: initialData.category || 'Salary',
+        date: initialData.date
+          ? new Date(initialData.date).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
+        paymentMethod: initialData.paymentMethod || 'Bank Transfer',
+        description: initialData.description || '',
+      });
+    } else {
+      setFormData({
+        title: '',
+        amount: '',
+        category: 'Salary',
+        date: new Date().toISOString().split('T')[0],
+        paymentMethod: 'Bank Transfer',
+        description: '',
+      });
+    }
+    setError('');
+  }, [initialData, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!formData.title.trim()) {
+      return setError('Please enter an income source/title.');
+    }
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      return setError('Please enter a valid amount greater than zero.');
+    }
+
+    try {
+      setLoading(true);
+      if (initialData && initialData._id) {
+        await incomeService.update(initialData._id, formData);
+      } else {
+        await incomeService.create(formData);
+      }
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      setError(
+        err.response?.data?.message || 'Failed to save income. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden transition-all">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/40">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              {initialData ? 'Edit Income' : 'Add New Income'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Record salary, freelance earnings, or secondary income streams
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300">
+              {error}
+            </div>
+          )}
+
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Income Title / Source *
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="e.g. November Salary, Upwork Client Project, Stock Dividend"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              required
+            />
+          </div>
+
+          {/* Amount & Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Amount ({CURRENCY_SYMBOLS[currency] || '₹'}) *
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm font-bold">
+                  {CURRENCY_SYMBOLS[currency] || '₹'}
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Date *
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Category & Payment Method */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Income Category *
+              </label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              >
+                {INCOME_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Payment Channel
+              </label>
+              <select
+                name="paymentMethod"
+                value={formData.paymentMethod}
+                onChange={handleChange}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              >
+                {INCOME_PAYMENT_METHODS.map((pm) => (
+                  <option key={pm} value={pm}>
+                    {pm}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Description (Optional)
+            </label>
+            <textarea
+              name="description"
+              rows="2"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Employer name, transaction reference, client notes..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500 resize-none"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="pt-2 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm font-semibold shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>{initialData ? 'Update Income' : 'Save Income'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default IncomeModal;

@@ -1,0 +1,22 @@
+{
+  "name": "smart-expense-analyzer-root",
+  "version": "1.0.0",
+  "description": "Smart Expense Analyzer - Personal Finance Tracking and Smart Spending Analysis System (Intermediate-Level CSE Capstone Project)",
+  "scripts": {
+    "start": "node backend/server.js",
+    "seed": "npm run seed --prefix backend",
+    "backend": "npm run dev --prefix backend",
+    "frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend"
+  },
+  "keywords": [
+    "mern",
+    "react",
+    "vite",
+    "mongodb",
+    "express",
+    "capstone-project"
+  ],
+  "author": "B.Tech CSE Capstone Project",
+  "license": "ISC"
+}
